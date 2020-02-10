@@ -1,6 +1,6 @@
 #include "header.h"
 
-//безопасное чтение вирт. адресов ядра
+//Р±РµР·РѕРїР°СЃРЅРѕРµ С‡С‚РµРЅРёРµ РІРёСЂС‚. Р°РґСЂРµСЃРѕРІ СЏРґСЂР°
 BOOLEAN SafeReadKrnlAddr(PVOID TargetAddress, PVOID AllocatedBuffer, ULONG LengthYouWantToRead)
 {
 	BOOLEAN b = FALSE;
